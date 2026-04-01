@@ -1,0 +1,58 @@
+{
+    "background": {
+        "light": "#f6f7fc",
+        "dark": "#101116"
+    },
+    "title": {
+        "light": "#9cacbe",
+        "dark": "#9cacbe"
+    },
+    "continueButton": {
+        "light": "#317ae8",
+        "dark": "#465acf"
+    },
+    "playButton": {
+        "light": "#f6f7fc",
+        "dark": "#2b2f42"
+    },
+    "board": {
+        "light": "#ffffff",
+        "dark": "#2b2f42"
+    },
+    "secondary": {
+        "light": "#7e7f91",
+        "dark": "#242f6d"
+    },
+    "cellText": {
+        "light": "#212339",
+        "dark": "#99a0c2"
+    },
+    "selectedCell": {
+        "light": "#c1d2ff",
+        "dark": "#242f6d"
+    },
+    "highlightedCell": {
+        "light": "#e7eaf5",
+        "dark": "#1f212f"
+    },
+    "errorCell": {
+        "light": "#ffd9d5",
+        "dark": "#5a3845"
+    },
+    "errorCellText": {
+        "light": "#f44337",
+        "dark": "#c64c4c"
+    },
+    "highlightedByNumberCell": {
+        "light": "#c6cbe1",
+        "dark": "#242f6d"
+    },
+    "successCellText": {
+        "light": "#4861ab",
+        "dark": "#6173e0"
+    },
+    "inputControlNumber": {
+        "light": "#4a62ab",
+        "dark": "#6f82f9"
+    }
+}
