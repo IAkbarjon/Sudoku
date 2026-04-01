@@ -13,7 +13,7 @@ export default function Home() {
 
   const [time, setTime] = useState(0)
   const [isRunning, setIsRunning] = useState(true)
-  let timerRef: NodeJS.Timeout | null = null
+  let timerRef: NodeJS.Timeout | number | null = null
 
   useEffect(() => {
     initBoard()
@@ -80,7 +80,7 @@ export default function Home() {
       ))]
     ))
     setSelectedCell(newCell)
-    if (selectedCell.inputNumber !== selectedCell.number) {
+    if (number !== selectedCell.number) {
       setMistakes(prev => prev + 1)
     }
   }
@@ -128,8 +128,17 @@ export default function Home() {
                         && (Math.floor(cell.y / 3) === Math.floor(selectedCell.y / 3)))
                         && styles.highlightedCell,
                       selectedCell
+                        && (selectedCell.fixed
+                          ? true
+                          : selectedCell.inputNumber
+                        )
+                        && (cell.fixed
+                          ? true
+                          : cell.inputNumber
+                        )
                         && cell.number === selectedCell.number
-                        && styles.highlightedCellNumber,
+                          ? styles.highlightedCellNumber
+                          : {},
                       !cell.fixed
                         && !!cell.inputNumber
                         && cell.inputNumber !== cell.number
@@ -153,10 +162,10 @@ export default function Home() {
                     ><Text
                       style={[
                         styles.cellText,
-                        cell.inputNumber ? (
+                        (selectedCell?.inputNumber && cell.inputNumber) ? (
                           cell.inputNumber === cell.number
-                          ? styles.successInputedCell
-                          : styles.errorInputedCellText
+                            ? styles.successInputedCell
+                            : styles.errorInputedCellText
                         ) : {}
                       ]}
                       >{cell.fixed ? cell.number : cell.inputNumber}</Text>
