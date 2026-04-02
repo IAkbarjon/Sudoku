@@ -91,6 +91,15 @@ export default function Home() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
+  const eraseCell = () => {
+    if (!selectedCell || selectedCell.fixed) return
+    const newCell = { ...selectedCell, inputNumber: undefined }
+    setBoard(prev => prev.map(row => (
+      row.map(cell => cell !== selectedCell ? cell : newCell)
+    )))
+    setSelectedCell(newCell)
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.mainColumn}>
@@ -152,10 +161,10 @@ export default function Home() {
                         borderTopWidth: cell.y % 3 === 0 ? 1 : 1,
                         borderBottomWidth: cell.y % 3 === 2 ? 2 : 1,
                         // Определение цвета border
-                        borderLeftColor: cell.x % 3 === 0 ? 'black' : '#666',
-                        borderRightColor: cell.x % 3 === 2 ? 'black' : '#666',
-                        borderTopColor: cell.y % 3 === 0 ? 'black' : '#666',
-                        borderBottomColor: cell.y % 3 === 2 ? 'black' : '#666',
+                        borderLeftColor: cell.x % 3 === 0 ? 'black' : colors.secondary.light,
+                        borderRightColor: cell.x % 3 === 2 ? 'black' : colors.secondary.light,
+                        borderTopColor: cell.y % 3 === 0 ? 'black' : colors.secondary.light,
+                        borderBottomColor: cell.y % 3 === 2 ? 'black' : colors.secondary.light,
                       }
                     ]}
                     onPress={() => onCellPress(cell)}
@@ -183,7 +192,7 @@ export default function Home() {
         ]}>
           {/* Горизонтальные инструменты */}
           <View style={styles.inputTools}>
-            <TouchableOpacity style={styles.inputTool} disabled={!selectedCell}>
+            <TouchableOpacity style={styles.inputTool} disabled={!selectedCell} onPress={() => eraseCell()}>
               <MaterialCommunityIcons name='eraser' size={44} color={colors.secondary.light} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.inputTool}>
