@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import colors from '../colors.json'
-import { useTheme } from './themeContext'
+import { useTheme } from '../contexts/themeContext'
 
 export default function Home() {
   const router = useRouter()

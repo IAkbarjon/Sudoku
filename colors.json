@@ -54,5 +54,9 @@
     "inputControlNumber": {
         "light": "#4a62ab",
         "dark": "#6f82f9"
+    },
+    "accent": {
+        "light": "#333333",
+        "dark": "#eeeeee"
     }
 }

@@ -9,6 +9,7 @@ export default function Home() {
   const [board, setBoard] = useState<GameBoard>([])
   const [selectedCell, setSelectedCell] = useState<Cell | undefined>()
   const [gameDifficulty, setGameDifficulty] = useState<GameDifficulty>('Нормально')
+  const [isDraftMode, setIsDraftMode] = useState(false)
   const [mistakes, setMistakes] = useState(0)
   const windowWidth = Dimensions.get('window').width
 
@@ -128,17 +129,21 @@ export default function Home() {
             {board && board.map((row, rowIndex) => (
               <View key={`row-${rowIndex}`} style={styles.row}>
                 {row && row.map((cell) => (
+                  // Ячейка
                   <TouchableOpacity
                     key={`cell-${cell.x}-${cell.y}`}
                     style={[
                       styles.cell,
+                      // Подсвечивание ячеек в одном столбце или строке
                       selectedCell
-                        && (cell.x === selectedCell.x || cell.y === selectedCell.y)
+                        && (selectedCell.x === cell.x || selectedCell.y === cell.y)
                         && styles.highlightedCell,
+                      // Подсвечивание ячеек в одной секции с выбранной
                       selectedCell
                         && ((Math.floor(cell.x / 3) === Math.floor(selectedCell.x / 3))
                         && (Math.floor(cell.y / 3) === Math.floor(selectedCell.y / 3)))
                         && styles.highlightedCell,
+                      // Подсвечивание ячеек с таким же номеров, как у выбранной
                       selectedCell
                         && (selectedCell.fixed
                           ? true
@@ -151,18 +156,18 @@ export default function Home() {
                         && cell.number === selectedCell.number
                           ? styles.highlightedCellNumber
                           : {},
+                      // Подсвечивание ячейки при неправильном вводе
                       !cell.fixed
                         && !!cell.inputNumber
                         && cell.inputNumber !== cell.number
                         && styles.errorInputedCell,
+                      // Подсвечивание выбранной ячейки
                       cell === selectedCell && styles.selectedCell,
                       {
                         // Разделяющая линия по горизонтали
-                        borderLeftWidth: cell.x % 3 === 0 ? 1 : 1,
-                        borderRightWidth: cell.x % 3 === 2 ? 2 : 1,
+                        borderRightWidth: cell.x === 8 ? 0 : (cell.x % 3 === 2 ? 2 : 1),
                         // Разделяющая линия по вертикали
-                        borderTopWidth: cell.y % 3 === 0 ? 1 : 1,
-                        borderBottomWidth: cell.y % 3 === 2 ? 2 : 1,
+                        borderBottomWidth: cell.y === 8 ? 0 : (cell.y % 3 === 2 ? 2 : 1),
                         // Определение цвета border
                         borderLeftColor: cell.x % 3 === 0 ? 'black' : colors.secondary.light,
                         borderRightColor: cell.x % 3 === 2 ? 'black' : colors.secondary.light,
@@ -174,7 +179,7 @@ export default function Home() {
                     ><Text
                       style={[
                         styles.cellText,
-                        (selectedCell?.inputNumber && cell.inputNumber) ? (
+                        (cell.inputNumber) ? (
                           cell.inputNumber === cell.number
                             ? styles.successInputedCell
                             : styles.errorInputedCellText
@@ -198,7 +203,7 @@ export default function Home() {
             <TouchableOpacity style={styles.inputTool} disabled={!selectedCell} onPress={() => eraseCell()}>
               <MaterialCommunityIcons name='eraser' size={44} color={colors.secondary.light} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.inputTool}>
+            <TouchableOpacity style={styles.inputTool} onPress={() => setIsDraftMode(prev => !prev)}>
               <MaterialCommunityIcons name='pencil' size={44} color={colors.secondary.light} />
             </TouchableOpacity>
           </View>
@@ -256,7 +261,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '90%',
     height: '90%',
-    borderWidth: 2
+    borderWidth: 2,
   },
   row: {
     flex: 1,
@@ -270,7 +275,7 @@ const styles = StyleSheet.create({
     width: '11.1%',
     height: '100%',
     backgroundColor: colors.board.light,
-    borderWidth: 1,
+    // borderWidth: 1,
     borderColor: '#555',
     alignItems: 'center',
     justifyContent: 'center',
@@ -302,7 +307,7 @@ const styles = StyleSheet.create({
   // Поля взаимодействия
   inputInteraction: {
     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-    borderRadius: 6,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
