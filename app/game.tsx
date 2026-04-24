@@ -62,7 +62,7 @@ export default function Home() {
       case 'Нормально':
         return 0.45
       default:
-        return 0.05
+        return 0.4
     }
   }
 
@@ -111,16 +111,17 @@ export default function Home() {
   const onInputControlPress = (number: number) => {
     if (!selectedCell || selectedCell.fixed) return
     const newCell = { ...selectedCell, inputNumber: number }
-    setBoard((prev) => (
-      [...prev.map((row) => (
+    const newBoard = (
+      [...board.map((row) => (
         row.map((cell) => cell === selectedCell ? newCell : cell)
       ))]
-    ))
+    )
+    setBoard((prev) => newBoard)
     setSelectedCell(newCell)
     if (number !== selectedCell.number) {
       setMistakes(prev => prev + 1)
     }
-    checkWin()
+    checkWin(newBoard)
   }
 
   const formatTime = (seconds: number) => {
@@ -139,8 +140,7 @@ export default function Home() {
     setSelectedCell(newCell)
   }
 
-  const checkWin = () => {
-    // Проверяем, что все НЕ fixed ячейки имеют inputNumber
+  const checkWin = (board: GameBoard) => {
     const allCellsFilled = board.every(row => 
       row.every(cell => 
         cell.fixed || cell.inputNumber
@@ -148,7 +148,9 @@ export default function Home() {
     );
     
     if (allCellsFilled) {
-      setIsGameOver(true);
+      setIsGameOver(true)
+      setIsWin(true)
+      setIsRunning(false)
     }
   }
 
