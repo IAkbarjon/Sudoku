@@ -21,7 +21,7 @@
     },
     "secondary": {
         "light": "#7e7f91",
-        "dark": "#242f6d"
+        "dark": "#7e7f91"
     },
     "cellText": {
         "light": "#212339",
@@ -57,6 +57,6 @@
     },
     "accent": {
         "light": "#333333",
-        "dark": "#eeeeee"
+        "dark": "#dedede"
     }
 }

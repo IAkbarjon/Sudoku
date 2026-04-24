@@ -1,21 +1,36 @@
+import GameOverModal from '@/components/layout/GameOverModal'
+import PauseModal from '@/components/layout/PauseModal'
 import BackButton from '@/components/navigation/backButton'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { shuffleBoard, swapBlockColumns, swapCellColumnsInBlockColumn, swapCellRowsInBlockRow, transposingBoard } from '@/utils/gameBoardUtils'
+import { random } from '@/utils/mathUtils'
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View, } from 'react-native'
-import colors from '../colors.json'
-import type { Cell, GameBoard, GameDifficulty } from './types'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import GameCell from '../components/gameCell'
+import { useTheme } from '../contexts/themeContext'
+import Tools from './tools'
+import type { BlockPosition, Cell, GameBoard } from './types'
 
 export default function Home() {
   const [board, setBoard] = useState<GameBoard>([])
   const [selectedCell, setSelectedCell] = useState<Cell | undefined>()
-  const [gameDifficulty, setGameDifficulty] = useState<GameDifficulty>('Нормально')
   const [isDraftMode, setIsDraftMode] = useState(false)
   const [mistakes, setMistakes] = useState(0)
+  const [isGameOver, setIsGameOver] = useState(false)
+  const [isWin, setIsWin] = useState(false)
   const windowWidth = Dimensions.get('window').width
+  const { colors } = useTheme()
 
   const [time, setTime] = useState(0)
   const [isRunning, setIsRunning] = useState(true)
   let timerRef: NodeJS.Timeout | number | null = null
+
+  const { difficulty: gameDifficulty } = useLocalSearchParams()
+
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
 
   useEffect(() => {
     initBoard()
@@ -23,7 +38,6 @@ export default function Home() {
 
   useEffect(() => {
     if (isRunning) {
-      setTime(0)
       timerRef = setInterval(() => {
         setTime(prevTime => prevTime + 1)
       }, 1000)
@@ -34,6 +48,33 @@ export default function Home() {
     return () => clearInterval(timerRef!)
   }, [isRunning])
 
+  useEffect(() => {
+    if (mistakes === 3) {
+      setIsRunning(false)
+      setIsGameOver(true)
+    }
+  }, [mistakes])
+
+  const getGameDifficultyLevel = () => {
+    switch (gameDifficulty) {
+      case 'Сложно':
+        return 0.5
+      case 'Нормально':
+        return 0.45
+      default:
+        return 0.05
+    }
+  }
+
+  const newGame = () => {
+    setTime(0)
+    setIsGameOver(false)
+    setIsWin(false)
+    setIsRunning(true)
+    setMistakes(0)
+    initBoard()
+  }
+
   // Инициализация игры
   const initBoard = () => {
     const newBoard = new Array(9).fill(null).map((_, rowIndex) => (
@@ -41,35 +82,29 @@ export default function Home() {
         number: ((rowIndex * 3 + Math.floor(rowIndex / 3) + colIndex) % 9) + 1,
         y: rowIndex,
         x: colIndex,
-        fixed: Math.random() < 0.5,
+        fixed: Math.random() > getGameDifficultyLevel(),
       }))
     ))
 
-    setBoard(shuffleBoard(newBoard))
-  }
+    const shuffledBoard = shuffleBoard(newBoard)
+    setBoard(swapBlockColumns(shuffledBoard, 0, 2))
 
-  const shuffleBoard = (board: GameBoard) => {
-    const newBoard = [...board]
+    setBoard(prev => [...transposingBoard(prev)])
 
-    for (let block = 0; block < 3; block++) {
-      const rows = [block * 3, block * 3 + 1, block * 3 + 2]
-
-      // Перемешание алгоритмом Фишера-Йетса
-      rows.sort(() => Math.random() - 0.5)
-
-      const tempRows = rows.map(i => newBoard[i])
-      newBoard[block * 3] = tempRows[0]
-      newBoard[block * 3 + 1] = tempRows[1]
-      newBoard[block * 3 + 2] = tempRows[2]
+    // Перебор всех блочных столбцов
+    for (let blockCol = 0; blockCol < 3; blockCol++) {
+      // Перемешивание столбцов ячеек внутри блочного столбца
+      for (let i = 0; i < 3; i++) {
+        setBoard(prev => [...swapCellColumnsInBlockColumn(prev, blockCol as BlockPosition, random.inRange(0, 3) as BlockPosition, random.inRange(0, 3) as BlockPosition)])
+      }
     }
 
-    // Обновление координат 'y' после перемешивания
-    return newBoard.map((row, y) => row.map(cell => ({ ...cell, y })))
-  }
-
-  // Выбор ячейки
-  const onCellPress = (cell: Cell) => {
-    setSelectedCell(cell)
+    // Перебор всех блочных строк
+    for (let blockRow = 0; blockRow < 3; blockRow++) {
+      for (let i = 0; i < 3; i++) {
+        setBoard(prev => [...swapCellRowsInBlockRow(prev, blockRow as BlockPosition, random.inRange(0, 3) as BlockPosition, random.inRange(0, 3) as BlockPosition)])
+      }
+    }
   }
 
   // Ввод числа в ячейку
@@ -85,6 +120,7 @@ export default function Home() {
     if (number !== selectedCell.number) {
       setMistakes(prev => prev + 1)
     }
+    checkWin()
   }
 
   const formatTime = (seconds: number) => {
@@ -93,6 +129,7 @@ export default function Home() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Очистка ячейки от номера
   const eraseCell = () => {
     if (!selectedCell || selectedCell.fixed) return
     const newCell = { ...selectedCell, inputNumber: undefined }
@@ -102,9 +139,30 @@ export default function Home() {
     setSelectedCell(newCell)
   }
 
+  const checkWin = () => {
+    // Проверяем, что все НЕ fixed ячейки имеют inputNumber
+    const allCellsFilled = board.every(row => 
+      row.every(cell => 
+        cell.fixed || cell.inputNumber
+      )
+    );
+    
+    if (allCellsFilled) {
+      setIsGameOver(true);
+    }
+  }
+
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container, 
+      {
+        backgroundColor: colors.background,
+        paddingTop: insets.top,
+        paddingBottom: insets.bottom,
+      }
+      ]}>
         <BackButton />
+        <Tools />
         
       <View style={styles.mainColumn}>
         <View style={[
@@ -112,12 +170,22 @@ export default function Home() {
           {
             width: windowWidth * 0.94,
             height: windowWidth,
+            backgroundColor: colors.board,
           }
         ]}>
           <View style={styles.gameStats}>
-            <Text style={styles.gameStatsText}>{gameDifficulty}</Text>
-            <Text style={styles.gameStatsText}>{`Ошибка ${mistakes}/3`}</Text>
-            <Text style={styles.gameStatsText}>{formatTime(time)}</Text>
+            <View style={styles.gameStatsColumn}>
+              <Text style={{ color: colors.secondary }}>{gameDifficulty}</Text>
+            </View>
+            <View style={styles.gameStatsColumn}>
+              <Text style={{ color: colors.secondary }}>{`Ошибка ${mistakes}/3`}</Text>
+            </View>
+            <View style={styles.gameStatsColumn}>
+              <Text style={{ color: colors.secondary }}>{formatTime(time)}</Text>
+              <TouchableOpacity onPress={() => setIsRunning(prev => !prev)}>
+                <Ionicons name={isRunning ? 'pause' : 'play'} size={16} color={colors.secondary} />
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={[
             styles.gameBoard,
@@ -130,63 +198,12 @@ export default function Home() {
               <View key={`row-${rowIndex}`} style={styles.row}>
                 {row && row.map((cell) => (
                   // Ячейка
-                  <TouchableOpacity
+                  <GameCell
                     key={`cell-${cell.x}-${cell.y}`}
-                    style={[
-                      styles.cell,
-                      // Подсвечивание ячеек в одном столбце или строке
-                      selectedCell
-                        && (selectedCell.x === cell.x || selectedCell.y === cell.y)
-                        && styles.highlightedCell,
-                      // Подсвечивание ячеек в одной секции с выбранной
-                      selectedCell
-                        && ((Math.floor(cell.x / 3) === Math.floor(selectedCell.x / 3))
-                        && (Math.floor(cell.y / 3) === Math.floor(selectedCell.y / 3)))
-                        && styles.highlightedCell,
-                      // Подсвечивание ячеек с таким же номеров, как у выбранной
-                      selectedCell
-                        && (selectedCell.fixed
-                          ? true
-                          : selectedCell.inputNumber
-                        )
-                        && (cell.fixed
-                          ? true
-                          : cell.inputNumber
-                        )
-                        && cell.number === selectedCell.number
-                          ? styles.highlightedCellNumber
-                          : {},
-                      // Подсвечивание ячейки при неправильном вводе
-                      !cell.fixed
-                        && !!cell.inputNumber
-                        && cell.inputNumber !== cell.number
-                        && styles.errorInputedCell,
-                      // Подсвечивание выбранной ячейки
-                      cell === selectedCell && styles.selectedCell,
-                      {
-                        // Разделяющая линия по горизонтали
-                        borderRightWidth: cell.x === 8 ? 0 : (cell.x % 3 === 2 ? 2 : 1),
-                        // Разделяющая линия по вертикали
-                        borderBottomWidth: cell.y === 8 ? 0 : (cell.y % 3 === 2 ? 2 : 1),
-                        // Определение цвета border
-                        borderLeftColor: cell.x % 3 === 0 ? 'black' : colors.secondary.light,
-                        borderRightColor: cell.x % 3 === 2 ? 'black' : colors.secondary.light,
-                        borderTopColor: cell.y % 3 === 0 ? 'black' : colors.secondary.light,
-                        borderBottomColor: cell.y % 3 === 2 ? 'black' : colors.secondary.light,
-                      }
-                    ]}
-                    onPress={() => onCellPress(cell)}
-                    ><Text
-                      style={[
-                        styles.cellText,
-                        (cell.inputNumber) ? (
-                          cell.inputNumber === cell.number
-                            ? styles.successInputedCell
-                            : styles.errorInputedCellText
-                        ) : {}
-                      ]}
-                      >{cell.fixed ? cell.number : cell.inputNumber}</Text>
-                  </TouchableOpacity>
+                    cell={cell}
+                    selectedCell={selectedCell}
+                    setSelectedCell={setSelectedCell}
+                  />
                 ))}
               </View>
             ))}
@@ -195,16 +212,17 @@ export default function Home() {
         <View style={[
           styles.inputInteraction,
           {
-            width: windowWidth * 0.94
+            width: windowWidth * 0.94,
+            backgroundColor: colors.board,
           }
         ]}>
           {/* Горизонтальные инструменты */}
           <View style={styles.inputTools}>
-            <TouchableOpacity style={styles.inputTool} disabled={!selectedCell} onPress={() => eraseCell()}>
-              <MaterialCommunityIcons name='eraser' size={44} color={colors.secondary.light} />
+            <TouchableOpacity style={styles.inputTool} disabled={!selectedCell || selectedCell.fixed} onPress={() => eraseCell()}>
+              <MaterialCommunityIcons name='eraser' size={44} color={colors.secondary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.inputTool} onPress={() => setIsDraftMode(prev => !prev)}>
-              <MaterialCommunityIcons name='pencil' size={44} color={colors.secondary.light} />
+              <MaterialCommunityIcons name='pencil' size={44} color={colors.secondary} />
             </TouchableOpacity>
           </View>
           {/* Горизонтальные кнопки ввода */}
@@ -212,15 +230,39 @@ export default function Home() {
             {new Array(9).fill(null).map((_, numIndex) => (
               <TouchableOpacity
                 key={`inputControl-${numIndex+1}`}
-                style={styles.inputControl}
+                style={[styles.inputControl, { backgroundColor: colors.background }]}
                 onPress={() => onInputControlPress(numIndex + 1)}
                 disabled={selectedCell?.fixed}
-                ><Text style={styles.inputControlText}>{numIndex + 1}</Text>
+                ><Text style={[styles.inputControlText, { color: colors.inputControlNumber }]}>{numIndex + 1}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
       </View>
+
+      <PauseModal
+        visible={!isRunning && !isGameOver}
+        mistakes={mistakes}
+        onClose={() => setIsRunning(true)}
+        onResume={() => setIsRunning(true)}
+        onRestart={() => {
+          newGame()
+        }}
+        onMainMenu={() => router.back()}
+        timeElapsed={time}
+      />
+
+      <GameOverModal
+        visible={isGameOver}
+        isWin={isWin}
+        onClose={() => setMistakes(0)}
+        onRestart={() => {
+          newGame()
+        }}
+        onMainMenu={() => router.back()}
+        mistakes={mistakes}
+        timeElapsed={time}
+      />
     </View>
   )
 }
@@ -230,18 +272,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
   },
   // Осноавной столбец
   mainColumn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 40
+    gap: 12
   },
   // Игра
   board: {
-    backgroundColor: colors.board.light,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'space-around',
@@ -249,11 +289,15 @@ const styles = StyleSheet.create({
   },
   gameStats: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     width: '100%',
+    paddingHorizontal: 10,
   },
-  gameStatsText: {
-    color: colors.secondary.light,
+  gameStatsColumn: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   gameBoard: {
     backgroundColor: 'lightgray',
@@ -271,46 +315,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  cell: {
-    width: '11.1%',
-    height: '100%',
-    backgroundColor: colors.board.light,
-    // borderWidth: 1,
-    borderColor: '#555',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedCell: {
-    backgroundColor: colors.selectedCell.light,
-  },
-  highlightedCell: {
-    backgroundColor: colors.highlightedCell.light,
-  },
-  highlightedCellNumber: {
-    backgroundColor: colors.highlightedByNumberCell.light,
-  },
-  cellText: {
-    fontSize: 24,
-    textAlign: 'center',
-    color: colors.cellText.light,
-    fontFamily: 'Source Code Pro'
-  },
-  successInputedCell: {
-    color: colors.successCellText.light,
-  },
-  errorInputedCell: {
-    backgroundColor: colors.errorCell.light,
-  },
-  errorInputedCellText: {
-    color: colors.errorCellText.light,
-  },
   // Поля взаимодействия
   inputInteraction: {
     boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 10,
     paddingVertical: 8
   },
   inputTools: {
@@ -329,12 +340,10 @@ const styles = StyleSheet.create({
   inputControl: {
     paddingVertical: 8,
     borderRadius: 6,
-    backgroundColor: colors.board.light,
     padding: 6
   },
   inputControlText: {
     fontSize: 34,
-    color: colors.inputControlNumber.light,
     fontFamily: 'Source Code Pro',
   },
 })

@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router'
-import { StatusBar } from 'expo-status-bar'
+import { StatusBar } from 'react-native'
 import 'react-native-reanimated'
 
 import { ThemeProvider } from '../contexts/themeContext'
@@ -11,10 +11,10 @@ export const unstable_settings = {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack screenOptions={{ headerShown: false, statusBarStyle: 'dark' }}>
         <Stack.Screen name='index' />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar barStyle={'dark-content'} backgroundColor={'lightgray'} />
     </ThemeProvider>
   );
 }

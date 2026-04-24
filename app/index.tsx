@@ -1,53 +1,80 @@
-import { screenWidth } from '@/utils/responsive'
-import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import colors from '../colors.json'
-import { useTheme } from '../contexts/themeContext'
+// app/index.tsx
+import DifficultyModal from '@/components/layout/DifficultyModal';
+import ToggleThemeButton from '@/components/toggleThemeButton';
+import { screenWidth } from '@/utils/responsive';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../contexts/themeContext';
+import { GameDifficulty } from './types';
 
 export default function Home() {
-  const router = useRouter()
-  const { colors, toggleTheme, theme } = useTheme()
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { colors } = useTheme();
+  const [modalVisible, setModalVisible] = useState(false);
 
-  const onPlay = () => {
-    router.push('/game')
-  }
+  const handlePlayBtnClick = () => {
+    setModalVisible(true);
+  };
 
-  const onContinue = () => {
-  }
+  const onPlay = (difficulty: GameDifficulty) => {
+    router.push({
+      pathname: '/game',
+      params: {
+        difficulty: difficulty
+      }
+    });
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <TouchableOpacity style={styles.toggleThemeBtn} onPress={() => toggleTheme()}>
-        <Ionicons
-          name={theme === 'light' ? 'moon' : 'sunny'}
-          size={32}
-          color={colors.title}
-        />
-      </TouchableOpacity>
+    <View style={[
+      styles.container,
+      {
+        backgroundColor: colors.background,
+        paddingTop: insets.top,
+        paddingBottom: insets.bottom,
+      }
+    ]}>
+      <StatusBar barStyle={'dark-content'} backgroundColor={colors.background} />
+      
+      <ToggleThemeButton
+        style={{
+          position: 'absolute',
+          top: 12,
+          right: 8,
+        }}
+      />
       
       <Text style={[styles.mainTitle, { color: colors.title }]}>SUDOKU</Text>
 
       <View style={styles.buttons}>
         <TouchableOpacity
-          onPress={() => onContinue()}
-          style={[styles.button, { backgroundColor: colors.continueButton }]}
-        >
-          <Text style={styles.continueBtnText}>Продолжить</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => onPlay()}
+          onPress={handlePlayBtnClick}
           style={[
             styles.button,
             styles.playBtn,
+            { borderColor: colors.continueButton }
           ]}
         >
-          <Text style={[styles.playBtnText, { color: colors.continueButton }]}>Играть</Text>
+          <Text style={[styles.playBtnText, { color: colors.continueButton }]}>
+            Играть
+          </Text>
         </TouchableOpacity>
       </View>
+
+      <DifficultyModal
+        visible={modalVisible}
+        onClose={handleCloseModal}
+        onSelectDifficulty={onPlay}
+      />
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -56,16 +83,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
   },
-  toggleThemeBtn: {
-    zIndex: 1,
-    position: 'absolute',
-    top: 12,
-    right: 8,
-  },
   mainTitle: {
-    fontSize: 44,
+    fontSize: 78,
     fontWeight: 'bold',
-    fontFamily: ''
   },
   buttons: {
     gap: 40,
@@ -76,18 +96,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 'calc(Infinity * 1px)',
+    borderRadius: 100,
   },
   playBtn: {
     backgroundColor: 'opacity',
-    borderColor: colors.continueButton.light,
     borderWidth: 1,
-  },
-  continueBtnText: {
-    fontSize: 24,
-    color: '#fff',
   },
   playBtnText: {
     fontSize: 24,
   },
-})
+});
